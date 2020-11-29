@@ -2,7 +2,8 @@ module Game.Setup exposing (Model, Msg, init, update, view)
 
 import Element exposing (..)
 import Element.Font as Font
-import Game exposing (Feature(..), Ship)
+import Game exposing (Ship)
+import Game.Feature as Feature exposing (Feature(..))
 import Gui
 import Random exposing (Seed)
 
@@ -91,7 +92,7 @@ update msg model =
 
                     Just newCount ->
                         updateShip
-                            (\ship -> { ship | cryopods = updateFeatureValue (max 0 newCount) ship.cryopods })
+                            (\ship -> { ship | cryopods = updateFeatureValue (max 1 newCount) ship.cryopods })
                             model
 
         SetShieldStrength newCountStr ->
@@ -102,7 +103,7 @@ update msg model =
 
                     Just newCount ->
                         updateShip
-                            (\ship -> { ship | shields = updateFeatureValue (max 0 newCount) ship.shields })
+                            (\ship -> { ship | shields = updateFeatureValue (max 1 newCount) ship.shields })
                             model
 
         SetBiofarmCount newCountStr ->
@@ -113,7 +114,7 @@ update msg model =
 
                     Just newCount ->
                         updateShip
-                            (\ship -> { ship | biofarms = updateFeatureValue (max 0 newCount) ship.biofarms })
+                            (\ship -> { ship | biofarms = updateFeatureValue (max 1 newCount) ship.biofarms })
                             model
 
         SetReactorCount newCountStr ->
@@ -124,7 +125,7 @@ update msg model =
 
                     Just newCount ->
                         updateShip
-                            (\ship -> { ship | fissionReactors = updateFeatureValue (max 0 newCount) ship.fissionReactors })
+                            (\ship -> { ship | fissionReactors = updateFeatureValue (max 1 newCount) ship.fissionReactors })
                             model
 
         SetSleepingQuarterCount newCountStr ->
@@ -135,7 +136,7 @@ update msg model =
 
                     Just newCount ->
                         updateShip
-                            (\ship -> { ship | sleepingQuarters = updateFeatureValue (max 0 newCount) ship.sleepingQuarters })
+                            (\ship -> { ship | sleepingQuarters = updateFeatureValue (max 1 newCount) ship.sleepingQuarters })
                             model
 
 
@@ -150,13 +151,8 @@ updateFeatureToggle val feature =
 
 
 updateFeatureValue : a -> Feature a -> Feature a
-updateFeatureValue newVal feature =
-    case feature of
-        Uninstalled ->
-            Uninstalled
-
-        Installed _ ->
-            Installed newVal
+updateFeatureValue newVal =
+    Feature.map (always newVal)
 
 
 updateShip : (Ship -> Ship) -> { a | ship : Ship } -> { a | ship : Ship }
@@ -172,38 +168,23 @@ view : Model -> Element Msg
 view { ship, money } =
     let
         energyProduced =
-            case ship.fissionReactors of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 100
+            ship.fissionReactors
+                |> Feature.withDefault 0
+                |> (*) 100
 
         energyConsumed =
-            [ case ship.cryopods of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 8
-            , case ship.shields of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 40
-            , case ship.biofarms of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 16
-            , case ship.sleepingQuarters of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 32
+            [ ship.cryopods
+                |> Feature.withDefault 0
+                |> (*) 8
+            , ship.shields
+                |> Feature.withDefault 0
+                |> (*) 40
+            , ship.biofarms
+                |> Feature.withDefault 0
+                |> (*) 16
+            , ship.sleepingQuarters
+                |> Feature.withDefault 0
+                |> (*) 32
             ]
                 |> List.sum
 
@@ -211,36 +192,21 @@ view { ship, money } =
             energyProduced - energyConsumed
 
         moneyRequired =
-            [ case ship.cryopods of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 80
-            , case ship.shields of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 400
-            , case ship.biofarms of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 45
-            , case ship.fissionReactors of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 5000
-            , case ship.sleepingQuarters of
-                Uninstalled ->
-                    0
-
-                Installed n ->
-                    n * 10
+            [ ship.cryopods
+                |> Feature.withDefault 0
+                |> (*) 80
+            , ship.shields
+                |> Feature.withDefault 0
+                |> (*) 400
+            , ship.biofarms
+                |> Feature.withDefault 0
+                |> (*) 45
+            , ship.fissionReactors
+                |> Feature.withDefault 0
+                |> (*) 5000
+            , ship.sleepingQuarters
+                |> Feature.withDefault 0
+                |> (*) 10
             ]
                 |> List.sum
 

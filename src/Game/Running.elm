@@ -2,7 +2,8 @@ module Game.Running exposing (Model, Msg, init, update, view)
 
 import Element exposing (..)
 import Element.Border as Border
-import Game exposing (Feature(..), Ship)
+import Game exposing (Ship)
+import Game.Feature exposing (Feature(..))
 import Gui
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)

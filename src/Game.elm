@@ -1,4 +1,6 @@
-module Game exposing (Feature(..), Ship)
+module Game exposing (Ship)
+
+import Game.Feature exposing (Feature)
 
 
 type alias Ship =
@@ -9,8 +11,3 @@ type alias Ship =
     , sleepingQuarters : Feature Int
     , fissionReactors : Feature Int
     }
-
-
-type Feature a
-    = Uninstalled
-    | Installed a
