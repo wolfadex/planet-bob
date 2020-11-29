@@ -31,6 +31,7 @@ type Model
 
 type alias SetupModel =
     { ship : Ship
+    , money : Int
     , seed : Seed
     }
 
@@ -92,6 +93,7 @@ init _ =
             , sleepingQuarters = Uninstalled
             , fissionReactors = Uninstalled
             }
+        , money = 10000
         , seed = Random.initialSeed 0
         }
     , Cmd.none
@@ -215,7 +217,7 @@ updateSetup msg model =
 
                 Just newCount ->
                     updateShip
-                        (\ship -> { ship | cryopods = updateFeatureValue newCount ship.cryopods })
+                        (\ship -> { ship | cryopods = updateFeatureValue (max 0 newCount) ship.cryopods })
                         model
                         |> GameSetup
 
@@ -226,7 +228,7 @@ updateSetup msg model =
 
                 Just newCount ->
                     updateShip
-                        (\ship -> { ship | shields = updateFeatureValue newCount ship.shields })
+                        (\ship -> { ship | shields = updateFeatureValue (max 0 newCount) ship.shields })
                         model
                         |> GameSetup
 
@@ -237,7 +239,7 @@ updateSetup msg model =
 
                 Just newCount ->
                     updateShip
-                        (\ship -> { ship | biofarms = updateFeatureValue newCount ship.biofarms })
+                        (\ship -> { ship | biofarms = updateFeatureValue (max 0 newCount) ship.biofarms })
                         model
                         |> GameSetup
 
@@ -248,7 +250,7 @@ updateSetup msg model =
 
                 Just newCount ->
                     updateShip
-                        (\ship -> { ship | fissionReactors = updateFeatureValue newCount ship.fissionReactors })
+                        (\ship -> { ship | fissionReactors = updateFeatureValue (max 0 newCount) ship.fissionReactors })
                         model
                         |> GameSetup
 
@@ -338,9 +340,9 @@ viewBody model =
 
 
 viewSetup : SetupModel -> Element SetupMsg
-viewSetup { ship } =
+viewSetup { ship, money } =
     let
-        availableEnergy =
+        energyProduced =
             case ship.fissionReactors of
                 Uninstalled ->
                     0
@@ -348,7 +350,7 @@ viewSetup { ship } =
                 Installed n ->
                     n * 100
 
-        requiredEnergy =
+        energyConsumed =
             [ case ship.cryopods of
                 Uninstalled ->
                     0
@@ -370,8 +372,39 @@ viewSetup { ship } =
             ]
                 |> List.sum
 
-        energy =
-            availableEnergy - requiredEnergy
+        excessEnergy =
+            energyProduced - energyConsumed
+
+        moneyRequired =
+            [ case ship.cryopods of
+                Uninstalled ->
+                    0
+
+                Installed n ->
+                    n * 80
+            , case ship.shields of
+                Uninstalled ->
+                    0
+
+                Installed n ->
+                    n * 400
+            , case ship.biofarms of
+                Uninstalled ->
+                    0
+
+                Installed n ->
+                    n * 45
+            , case ship.fissionReactors of
+                Uninstalled ->
+                    0
+
+                Installed n ->
+                    n * 5000
+            ]
+                |> List.sum
+
+        moneyRemaining =
+            money - moneyRequired
     in
     column
         [ spacing 16 ]
@@ -382,28 +415,46 @@ viewSetup { ship } =
 Build your ship!"""
             ]
         , viewShipSetup ship
-        , energy
+        , moneyRemaining
             |> String.fromInt
-            |> (++) "Available Energy: "
+            |> (++) "Available Money: ¥"
             |> text
             |> el
                 [ Font.color <|
-                    if energy < 0 then
+                    if moneyRemaining < 0 then
                         rgb 1 0 0
 
                     else
                         rgb 0 0 0
                 ]
-        , if energy >= 0 then
+        , excessEnergy
+            |> String.fromInt
+            |> (++) "Excess Energy: "
+            |> text
+            |> el
+                [ Font.color <|
+                    if excessEnergy < 0 then
+                        rgb 1 0 0
+
+                    else
+                        rgb 0 0 0
+                ]
+        , if excessEnergy < 0 then
             Gui.button
-                { label = text "Launch Ship"
-                , onPress = Just LaunchShip
+                { label = text "Can't Launch, lower energy usage"
+                , onPress = Nothing
+                }
+
+          else if moneyRemaining < 0 then
+            Gui.button
+                { label = text "Can't Launch, not enough money to build ship"
+                , onPress = Nothing
                 }
 
           else
             Gui.button
-                { label = text "Can't Launch, lower energy usage"
-                , onPress = Nothing
+                { label = text "Launch Ship"
+                , onPress = Just LaunchShip
                 }
         ]
 
@@ -507,5 +558,5 @@ viewRunning { currentCard, ship } =
 
 
 viewGameOver : EndModel -> Element Msg
-viewGameOver model =
+viewGameOver _ =
     text "Game Over"
