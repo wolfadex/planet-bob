@@ -5,6 +5,7 @@ import Element exposing (..)
 import Game.End as End
 import Game.Running as Running
 import Game.Setup as Setup
+import Random exposing (Seed)
 
 
 main : Program () Model Msg
@@ -22,7 +23,8 @@ main =
 
 
 type Model
-    = GameSetup Setup.Model
+    = Loading
+    | GameSetup Setup.Model
     | GameRunning Running.Model
     | GameOver End.Model
 
@@ -33,8 +35,8 @@ type Model
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( GameSetup Setup.init
-    , Cmd.none
+    ( Loading
+    , Random.generate GenerateRandomSeed Random.independentSeed
     )
 
 
@@ -48,7 +50,8 @@ subscriptions _ =
 
 
 type Msg
-    = SetupMessage Setup.Msg
+    = GenerateRandomSeed Seed
+    | SetupMessage Setup.Msg
     | RunningMessage Running.Msg
     | GameOverMessage End.Msg
 
@@ -56,6 +59,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model ) of
+        ( GenerateRandomSeed seed, Loading ) ->
+            ( Setup.init seed |> GameSetup, Cmd.none )
+
         ( SetupMessage m, GameSetup mod ) ->
             ( case Setup.update m mod of
                 ( True, newMod ) ->
@@ -105,6 +111,11 @@ view model =
 viewBody : Model -> Element Msg
 viewBody model =
     case model of
+        Loading ->
+            "Loading..."
+                |> text
+                |> el [ centerX, centerY ]
+
         GameSetup m ->
             Setup.view m
                 |> Element.map SetupMessage

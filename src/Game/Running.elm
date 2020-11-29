@@ -147,7 +147,7 @@ defaultFutureCards =
                 }
       }
     , { title = "Red Giant"
-      , description = "The ship passes too close too a red giant, overheating the ship. Some of the passengers die."
+      , description = "The ship passes too close too a red giant."
       , options =
             List.Nonempty.singleton
                 { label = "Pass by a red giant"

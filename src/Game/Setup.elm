@@ -7,8 +7,8 @@ import Gui
 import Random exposing (Seed)
 
 
-init : Model
-init =
+init : Seed -> Model
+init seed =
     { ship =
         { passengers = 0
         , cryopods = Uninstalled
@@ -18,7 +18,7 @@ init =
         , fissionReactors = Uninstalled
         }
     , money = 10000
-    , seed = Random.initialSeed 0
+    , seed = seed
     }
 
 
