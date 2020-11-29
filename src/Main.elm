@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser exposing (Document)
 import Element exposing (..)
+import Game exposing (EndType(..))
 import Game.End as End
 import Game.Running as Running
 import Game.Setup as Setup
@@ -26,7 +27,7 @@ type Model
     = Loading
     | GameSetup Setup.Model
     | GameRunning Running.Model
-    | GameOver End.Model
+    | GameEnd End.Model
 
 
 
@@ -51,9 +52,9 @@ subscriptions _ =
 
 type Msg
     = GenerateRandomSeed Seed
-    | SetupMessage Setup.Msg
-    | RunningMessage Running.Msg
-    | GameOverMessage End.Msg
+    | GameSetupMessage Setup.Msg
+    | GameRunningMessage Running.Msg
+    | GameEndMessage End.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -62,7 +63,7 @@ update msg model =
         ( GenerateRandomSeed seed, Loading ) ->
             ( Setup.init seed |> GameSetup, Cmd.none )
 
-        ( SetupMessage m, GameSetup mod ) ->
+        ( GameSetupMessage m, GameSetup mod ) ->
             ( case Setup.update m mod of
                 ( True, newMod ) ->
                     case Running.init newMod of
@@ -70,28 +71,34 @@ update msg model =
                             GameRunning runningMod
 
                         Nothing ->
-                            End.init newMod |> GameOver
+                            End.init newMod EndTimes |> GameEnd
 
                 ( False, newMod ) ->
                     GameSetup newMod
             , Cmd.none
             )
 
-        ( RunningMessage m, GameRunning mod ) ->
+        ( GameRunningMessage m, GameRunning mod ) ->
             ( case Running.update m mod of
-                ( False, newMod ) ->
+                ( Nothing, newMod ) ->
                     GameRunning newMod
 
-                ( True, newMod ) ->
-                    End.init newMod |> GameOver
+                ( Just endType, newMod ) ->
+                    End.init newMod endType |> GameEnd
             , Cmd.none
             )
 
-        ( GameOverMessage m, GameOver mod ) ->
-            ( End.update m mod
-                |> GameOver
-            , Cmd.none
-            )
+        ( GameEndMessage m, GameEnd mod ) ->
+            case End.update m mod of
+                Just newMod ->
+                    ( GameEnd newMod
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( Loading
+                    , Random.generate GenerateRandomSeed Random.independentSeed
+                    )
 
         _ ->
             ( model, Cmd.none )
@@ -118,12 +125,12 @@ viewBody model =
 
         GameSetup m ->
             Setup.view m
-                |> Element.map SetupMessage
+                |> Element.map GameSetupMessage
 
         GameRunning m ->
             Running.view m
-                |> Element.map RunningMessage
+                |> Element.map GameRunningMessage
 
-        GameOver m ->
+        GameEnd m ->
             End.view m
-                |> Element.map GameOverMessage
+                |> Element.map GameEndMessage

@@ -1,11 +1,13 @@
 module Game.End exposing (Model, Msg, init, update, view)
 
 import Element exposing (..)
-import Game exposing (Ship)
+import Game exposing (EndType(..), Ship)
+import Gui
 
 
 type alias Model =
     { ship : Ship
+    , endType : EndType
     }
 
 
@@ -13,9 +15,9 @@ type alias Model =
 ---- INIT ----
 
 
-init : { a | ship : Ship } -> Model
-init { ship } =
-    { ship = ship }
+init : { a | ship : Ship } -> EndType -> Model
+init { ship } endType =
+    { ship = ship, endType = endType }
 
 
 
@@ -23,14 +25,14 @@ init { ship } =
 
 
 type Msg
-    = NoOp
+    = NewGame
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> Maybe Model
 update msg model =
     case msg of
-        NoOp ->
-            model
+        NewGame ->
+            Nothing
 
 
 
@@ -38,5 +40,24 @@ update msg model =
 
 
 view : Model -> Element Msg
-view _ =
-    text "Game Over"
+view { endType } =
+    column
+        [ centerX, centerY, spacing 16 ]
+        [ text <|
+            case endType of
+                SettleColony description ->
+                    description
+
+                Starve description ->
+                    description
+
+                ShipDestroyed description ->
+                    description
+
+                EndTimes ->
+                    "An elder god appears before you, destroying everything in sight."
+        , Gui.button
+            { label = text "New Game"
+            , onPress = Just NewGame
+            }
+        ]

@@ -1,4 +1,4 @@
-module Game exposing (Ship)
+module Game exposing (EndType(..), Ship)
 
 import Game.Feature exposing (Feature)
 
@@ -11,3 +11,10 @@ type alias Ship =
     , sleepingQuarters : Feature Int
     , fissionReactors : Feature Int
     }
+
+
+type EndType
+    = SettleColony String
+    | Starve String
+    | ShipDestroyed String
+    | EndTimes
