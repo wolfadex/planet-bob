@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser exposing (Document)
 import Element exposing (..)
+import Element.Background as Background
 import Game exposing (EndType(..))
 import Game.End as End
 import Game.Running as Running
@@ -111,7 +112,17 @@ update msg model =
 view : Model -> Document Msg
 view model =
     { title = "Planet Bob"
-    , body = [ viewBody model |> layout [ padding 16 ] ]
+    , body =
+        [ viewBody model
+            |> el
+                [ Background.color (rgba 1 1 1 0.75)
+                , padding 16
+                ]
+            |> layout
+                [ padding 16
+                , Background.image "/static/Cylinder_Interior_Ship.jpg"
+                ]
+        ]
     }
 
 
