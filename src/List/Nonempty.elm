@@ -1,6 +1,7 @@
 module List.Nonempty exposing
     ( Nonempty
     , append
+    , appendList
     , fromList
     , head
     , map
@@ -27,6 +28,11 @@ fromList ls =
 singleton : a -> Nonempty a
 singleton first =
     Nonempty ( first, [] )
+
+
+appendList : List a -> Nonempty a -> Nonempty a
+appendList ls (Nonempty ( a, rest )) =
+    Nonempty ( a, rest ++ ls )
 
 
 toList : Nonempty a -> List a

@@ -28,7 +28,7 @@ type alias Card =
 
 type alias Option =
     { label : String
-    , action : Msg
+    , action : Ship -> ( Ship, String )
     }
 
 
@@ -124,48 +124,6 @@ nextRandomCard seed cards =
 
 
 
----- CARDS ----
-
-
-defaultFutureCards : List Card
-defaultFutureCards =
-    [ { title = "Asteroid Belt"
-      , description = "The ship is headed towards an asteroid belt!"
-      , options =
-            List.Nonempty.singleton
-                { label = "Push through the asteroid belt"
-                , action =
-                    CardOptionSelected
-                        (\ship ->
-                            case ship.shields of
-                                Uninstalled ->
-                                    ( { ship | passengers = ship.passengers - 5 }, "The asteroids break through the ship, killing 5 passengers." )
-
-                                Installed _ ->
-                                    ( ship, "Your shields protect the ship." )
-                        )
-                }
-      }
-    , { title = "Red Giant"
-      , description = "The ship passes too close too a red giant."
-      , options =
-            List.Nonempty.singleton
-                { label = "Pass by a red giant"
-                , action =
-                    CardOptionSelected
-                        (\ship ->
-                            ( { ship
-                                | passengers = ship.passengers - 2
-                              }
-                            , "The heat of the red giant scorches the ship, killing 2 passengers."
-                            )
-                        )
-                }
-      }
-    ]
-
-
-
 ---- VIEW ----
 
 
@@ -197,13 +155,81 @@ view { currentCard, ship, actionMessage } =
                 (\{ label, action } ->
                     Gui.button
                         { label = text label
-                        , onPress = Just action
+                        , onPress = Just (CardOptionSelected action)
                         }
                 )
-            |> row []
+            |> row [ spacing 8 ]
         , ship
             |> .passengers
             |> String.fromInt
             |> (++) "Passengers: "
             |> text
         ]
+
+
+
+---- CARDS ----
+
+
+defaultFutureCards : List Card
+defaultFutureCards =
+    [ { title = "Asteroid Belt"
+      , description = "The ship is headed towards an asteroid belt!"
+      , options =
+            List.Nonempty.singleton
+                { label = "Push through the asteroid belt"
+                , action =
+                    \ship ->
+                        case ship.shields of
+                            Uninstalled ->
+                                ( { ship | passengers = ship.passengers - 5 }, "The asteroids break through the ship, killing 5 passengers." )
+
+                            Installed _ ->
+                                ( ship, "Your shields protect the ship." )
+                }
+      }
+    , { title = "Red Giant"
+      , description = "The ship passes too close too a red giant."
+      , options =
+            List.Nonempty.singleton
+                { label = "Pass by a red giant"
+                , action =
+                    \ship ->
+                        ( { ship
+                            | passengers = ship.passengers - 2
+                          }
+                        , "The heat of the red giant scorches the ship, killing 2 passengers."
+                        )
+                }
+      }
+    , { title = "Alien Encounter"
+      , description = "You pick up an foreign ship on your radar."
+      , options =
+            List.Nonempty.appendList
+                [ { label = "Sneak past the ship"
+                  , action =
+                        \ship ->
+                            ( ship
+                            , "You pass quietly by, trying not to alert them to your presence"
+                            )
+                  }
+                ]
+                (List.Nonempty.singleton
+                    { label = "Hail the ship"
+                    , action =
+                        \ship ->
+                            ( { ship
+                                | fissionReactors =
+                                    case ship.fissionReactors of
+                                        Uninstalled ->
+                                            Uninstalled
+
+                                        Installed n ->
+                                            Installed (n * 2)
+                              }
+                            , "The aliens are friendly and show you how to modify your reactor to be twice as powerful. Your energy output doubles!"
+                            )
+                    }
+                )
+      }
+    ]
