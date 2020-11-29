@@ -3,7 +3,7 @@ module Game.Running exposing (Model, Msg, init, update, view)
 import Element exposing (..)
 import Element.Border as Border
 import Game exposing (Ship)
-import Game.Feature exposing (Feature(..))
+import Game.Feature as Feature exposing (Feature(..))
 import Gui
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)
@@ -196,9 +196,7 @@ defaultFutureCards =
                 { label = "Pass by a red giant"
                 , action =
                     \ship ->
-                        ( { ship
-                            | passengers = ship.passengers - 2
-                          }
+                        ( { ship | passengers = ship.passengers - 2 }
                         , "The heat of the red giant scorches the ship, killing 2 passengers."
                         )
                 }
@@ -206,31 +204,61 @@ defaultFutureCards =
     , { title = "Alien Encounter"
       , description = "You pick up an foreign ship on your radar."
       , options =
-            List.Nonempty.appendList
-                [ { label = "Sneak past the ship"
-                  , action =
-                        \ship ->
-                            ( ship
-                            , "You pass quietly by, trying not to alert them to your presence"
-                            )
-                  }
-                ]
-                (List.Nonempty.singleton
-                    { label = "Hail the ship"
-                    , action =
-                        \ship ->
-                            ( { ship
-                                | fissionReactors =
-                                    case ship.fissionReactors of
-                                        Uninstalled ->
-                                            Uninstalled
-
-                                        Installed n ->
-                                            Installed (n * 2)
-                              }
-                            , "The aliens are friendly and show you how to modify your reactor to be twice as powerful. Your energy output doubles!"
-                            )
-                    }
-                )
+            { label = "Hail the ship"
+            , action =
+                \ship ->
+                    ( { ship | fissionReactors = Feature.map ((*) 2) ship.fissionReactors }
+                    , "The aliens are friendly and show you how to modify your reactor to be twice as powerful. Your energy output doubles!"
+                    )
+            }
+                |> List.Nonempty.singleton
+                |> List.Nonempty.appendList
+                    [ { label = "Sneak past the ship"
+                      , action =
+                            \ship ->
+                                ( ship
+                                , "You pass quietly by, trying not to alert them to your presence"
+                                )
+                      }
+                    ]
+      }
+    , { title = "Rogue Moon"
+      , description = "You detect a rogue moon near by."
+      , options =
+            { label = "Explore the moon"
+            , action =
+                \ship ->
+                    ( { ship | passengers = ship.passengers - 3 }
+                    , "You send down 3 passengers to explore the planet. The moon is actually alive! It swallows the small exploration pod, killing all 3 crew."
+                    )
+            }
+                |> List.Nonempty.singleton
+                |> List.Nonempty.appendList
+                    [ { label = "Leave the moon be"
+                      , action = \ship -> ( ship, "You ignore the moon and continue on your way." )
+                      }
+                    ]
+      }
+    , { title = "SOS"
+      , description = "You hear a SOS come across the radio. A ship not too far from you has run out of food and it's passengers are beginning to starve."
+      , options =
+            { label = "Send food"
+            , action = \ship -> ( ship, "You send them some of your food. They are very grateful." )
+            }
+                |> List.Nonempty.singleton
+                |> List.Nonempty.appendList
+                    [ { label = "Take their remaining food"
+                      , action = \ship -> ( ship, "You steal the last of their food, leaving them to starve." )
+                      }
+                    , { label = "You have no food to spare (truth)"
+                      , action = \ship -> ( ship, "You greet them and let them know you have no food to spare. Hopefully they find some soon." )
+                      }
+                    , { label = "You have no food to spare (lie)"
+                      , action = \ship -> ( ship, "You greet them and lie about not having any food to spare. Hopefully they find food soon." )
+                      }
+                    , { label = "Ignore them"
+                      , action = \ship -> ( ship, "You ignore the distress signal and continue on your way." )
+                      }
+                    ]
       }
     ]
