@@ -1,7 +1,7 @@
 module Game.Running exposing (Model, Msg, init, update, view)
 
 import Element exposing (..)
-import Game exposing (Ship)
+import Game exposing (Feature(..), Ship)
 import Gui
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)
@@ -39,10 +39,26 @@ init { ship, seed } =
     let
         ( ( maybeCurrentCard, remainingCards ), nextSeed ) =
             nextRandomCard seed defaultFutureCards
+
+        passengerTotal =
+            [ case ship.cryopods of
+                Uninstalled ->
+                    0
+
+                Installed n ->
+                    n
+            , case ship.sleepingQuarters of
+                Uninstalled ->
+                    0
+
+                Installed n ->
+                    n * 4
+            ]
+                |> List.sum
     in
     Maybe.map
         (\currentCard ->
-            { ship = ship
+            { ship = { ship | passengers = passengerTotal }
             , seed = nextSeed
             , futureCards = remainingCards
             , pastCards = []
@@ -65,8 +81,15 @@ update msg model =
     case msg of
         CardOptionSelected fn ->
             let
+                cards =
+                    if List.isEmpty model.futureCards then
+                        defaultFutureCards
+
+                    else
+                        model.futureCards
+
                 ( ( maybeCurrentCard, remainingCards ), nextSeed ) =
-                    nextRandomCard model.seed model.futureCards
+                    nextRandomCard model.seed cards
             in
             case maybeCurrentCard of
                 Just currentCard ->
@@ -103,7 +126,16 @@ defaultFutureCards =
       , options =
             List.Nonempty.singleton
                 { label = "Push through the asteroid belt"
-                , action = CardOptionSelected (\ship -> { ship | passengers = ship.passengers - 5 })
+                , action =
+                    CardOptionSelected
+                        (\ship ->
+                            case ship.shields of
+                                Uninstalled ->
+                                    { ship | passengers = ship.passengers - 5 }
+
+                                Installed _ ->
+                                    ship
+                        )
                 }
       }
     , { title = "Red Giant"

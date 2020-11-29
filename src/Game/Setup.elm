@@ -52,7 +52,7 @@ update msg model =
     case msg of
         ToggleCryopods ->
             updateShip
-                (\ship -> { ship | cryopods = updateFeatureToggle 0 ship.cryopods })
+                (\ship -> { ship | cryopods = updateFeatureToggle 1 ship.cryopods })
                 model
                 |> Tuple.pair False
 
@@ -61,25 +61,25 @@ update msg model =
 
         ToggleShields ->
             updateShip
-                (\ship -> { ship | shields = updateFeatureToggle 0 ship.shields })
+                (\ship -> { ship | shields = updateFeatureToggle 1 ship.shields })
                 model
                 |> Tuple.pair False
 
         ToggleBiofarms ->
             updateShip
-                (\ship -> { ship | biofarms = updateFeatureToggle 0 ship.biofarms })
+                (\ship -> { ship | biofarms = updateFeatureToggle 1 ship.biofarms })
                 model
                 |> Tuple.pair False
 
         ToggleFissionReactors ->
             updateShip
-                (\ship -> { ship | fissionReactors = updateFeatureToggle 0 ship.fissionReactors })
+                (\ship -> { ship | fissionReactors = updateFeatureToggle 1 ship.fissionReactors })
                 model
                 |> Tuple.pair False
 
         ToggleSleepingQuarters ->
             updateShip
-                (\ship -> { ship | sleepingQuarters = updateFeatureToggle 0 ship.sleepingQuarters })
+                (\ship -> { ship | sleepingQuarters = updateFeatureToggle 1 ship.sleepingQuarters })
                 model
                 |> Tuple.pair False
 
