@@ -72,8 +72,12 @@ update msg model =
             )
 
         ( RunningMessage m, GameRunning mod ) ->
-            ( Running.update m mod
-                |> GameRunning
+            ( case Running.update m mod of
+                ( False, newMod ) ->
+                    GameRunning newMod
+
+                ( True, newMod ) ->
+                    End.init newMod |> GameOver
             , Cmd.none
             )
 

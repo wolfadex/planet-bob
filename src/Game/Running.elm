@@ -60,7 +60,7 @@ type Msg
     = CardOptionSelected (Ship -> Ship)
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Bool, Model )
 update msg model =
     case msg of
         CardOptionSelected fn ->
@@ -70,16 +70,17 @@ update msg model =
             in
             case maybeCurrentCard of
                 Just currentCard ->
-                    { ship = fn model.ship
-                    , seed = nextSeed
-                    , futureCards = remainingCards
-                    , pastCards = model.currentCard :: model.pastCards
-                    , currentCard = currentCard
-                    }
+                    ( False
+                    , { ship = fn model.ship
+                      , seed = nextSeed
+                      , futureCards = remainingCards
+                      , pastCards = model.currentCard :: model.pastCards
+                      , currentCard = currentCard
+                      }
+                    )
 
                 Nothing ->
-                    --GameOver { ship = model.ship }
-                    Debug.todo "game over"
+                    ( True, model )
 
 
 nextRandomCard : Seed -> List Card -> ( ( Maybe Card, List Card ), Seed )
