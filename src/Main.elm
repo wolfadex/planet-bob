@@ -59,7 +59,7 @@ type alias Card =
 
 type alias Option =
     { label : String
-    , action : Msg
+    , action : RunningMsg
     }
 
 
@@ -114,12 +114,23 @@ type SetupMsg
     | SetBiofarmCount String
     | ToggleFissionReactors
     | SetReactorCount String
+    | ToggleSleepingQuarters
+    | SetSleepingQuarterCount String
     | LaunchShip
 
 
-type Msg
+type RunningMsg
     = CardOptionSelected (Ship -> Ship)
-    | SetupMessage SetupMsg
+
+
+type GameOverMsg
+    = NoOp
+
+
+type Msg
+    = SetupMessage SetupMsg
+    | RunningMessage RunningMsg
+    | GameOverMessage GameOverMsg
 
 
 
@@ -132,37 +143,43 @@ update msg model =
         ( SetupMessage m, GameSetup mod ) ->
             ( updateSetup m mod, Cmd.none )
 
-        --GameRunning m ->m
-        --    case msg of
-        --        CardOptionSelected fn ->
-        --            let
-        --                ( ( maybeCurrentCard, remainingCards ), nextSeed ) =
-        --                    nextRandomCard m.seed m.futureCards
-        --            in
-        --            case maybeCurrentCard of
-        --                Just currentCard ->
-        --                    ( GameRunning
-        --                        { ship = fn m.ship
-        --                        , seed = nextSeed
-        --                        , futureCards = remainingCards
-        --                        , pastCards = m.currentCard :: m.pastCards
-        --                        , currentCard = currentCard
-        --                        }
-        --                    , Cmd.none
-        --                    )
-        --
-        --                Nothing ->
-        --                    ( GameOver { ship = m.ship }
-        --                    , Cmd.none
-        --                    )
-        --
-        --        _ ->
-        --            ( model, Cmd.none )
-        --
-        --GameOver _ ->
-        --    ( model, Cmd.none )
+        ( RunningMessage m, GameRunning mod ) ->
+            ( updateRunning m mod, Cmd.none )
+
+        ( GameOverMessage m, GameOver mod ) ->
+            ( updateGameOver m mod, Cmd.none )
+
         _ ->
             ( model, Cmd.none )
+
+
+updateGameOver : GameOverMsg -> EndModel -> Model
+updateGameOver msg model =
+    case msg of
+        NoOp ->
+            GameOver model
+
+
+updateRunning : RunningMsg -> RunningModel -> Model
+updateRunning msg model =
+    case msg of
+        CardOptionSelected fn ->
+            let
+                ( ( maybeCurrentCard, remainingCards ), nextSeed ) =
+                    nextRandomCard model.seed model.futureCards
+            in
+            case maybeCurrentCard of
+                Just currentCard ->
+                    GameRunning
+                        { ship = fn model.ship
+                        , seed = nextSeed
+                        , futureCards = remainingCards
+                        , pastCards = model.currentCard :: model.pastCards
+                        , currentCard = currentCard
+                        }
+
+                Nothing ->
+                    GameOver { ship = model.ship }
 
 
 updateSetup : SetupMsg -> SetupModel -> Model
@@ -210,6 +227,12 @@ updateSetup msg model =
                 model
                 |> GameSetup
 
+        ToggleSleepingQuarters ->
+            updateShip
+                (\ship -> { ship | sleepingQuarters = updateFeatureToggle 0 ship.sleepingQuarters })
+                model
+                |> GameSetup
+
         SetCryopodCount newCountStr ->
             case String.toInt newCountStr of
                 Nothing ->
@@ -251,6 +274,17 @@ updateSetup msg model =
                 Just newCount ->
                     updateShip
                         (\ship -> { ship | fissionReactors = updateFeatureValue (max 0 newCount) ship.fissionReactors })
+                        model
+                        |> GameSetup
+
+        SetSleepingQuarterCount newCountStr ->
+            case String.toInt newCountStr of
+                Nothing ->
+                    GameSetup model
+
+                Just newCount ->
+                    updateShip
+                        (\ship -> { ship | sleepingQuarters = updateFeatureValue (max 0 newCount) ship.sleepingQuarters })
                         model
                         |> GameSetup
 
@@ -334,6 +368,7 @@ viewBody model =
 
         GameRunning m ->
             viewRunning m
+                |> Element.map RunningMessage
 
         GameOver m ->
             viewGameOver m
@@ -369,6 +404,12 @@ viewSetup { ship, money } =
 
                 Installed n ->
                     n * 16
+            , case ship.sleepingQuarters of
+                Uninstalled ->
+                    0
+
+                Installed n ->
+                    n * 32
             ]
                 |> List.sum
 
@@ -400,6 +441,12 @@ viewSetup { ship, money } =
 
                 Installed n ->
                     n * 5000
+            , case ship.sleepingQuarters of
+                Uninstalled ->
+                    0
+
+                Installed n ->
+                    n * 10
             ]
                 |> List.sum
 
@@ -463,9 +510,6 @@ viewShipSetup : Ship -> Element SetupMsg
 viewShipSetup ship =
     column
         [ spacing 8 ]
-        --{ passengers : Int
-        --, sleepingQuarters : Feature Int
-        --}
         [ viewFeature "Cryopods"
             ToggleCryopods
             (\l v ->
@@ -506,6 +550,16 @@ viewShipSetup ship =
                     }
             )
             ship.fissionReactors
+        , viewFeature "Sleeping Quarters"
+            ToggleSleepingQuarters
+            (\l v ->
+                Gui.textField
+                    { label = l
+                    , onChange = SetSleepingQuarterCount
+                    , value = String.fromInt v
+                    }
+            )
+            ship.sleepingQuarters
         ]
 
 
@@ -529,7 +583,7 @@ viewFeature label toggleFeature featureInput feature =
                 ]
 
 
-viewRunning : RunningModel -> Element Msg
+viewRunning : RunningModel -> Element RunningMsg
 viewRunning { currentCard, ship } =
     column
         [ spacing 16 ]
