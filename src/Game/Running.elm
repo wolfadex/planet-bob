@@ -1,6 +1,7 @@
 module Game.Running exposing (Model, Msg, init, update, view)
 
 import Element exposing (..)
+import Element.Border as Border
 import Game exposing (Feature(..), Ship)
 import Gui
 import List.Nonempty exposing (Nonempty)
@@ -14,6 +15,7 @@ type alias Model =
     , futureCards : List Card
     , currentCard : Card
     , pastCards : List Card
+    , actionMessage : String
     }
 
 
@@ -63,6 +65,7 @@ init { ship, seed } =
             , futureCards = remainingCards
             , pastCards = []
             , currentCard = currentCard
+            , actionMessage = "Your beautiful new ship launches into the depths of space. Looking for a new world."
             }
         )
         maybeCurrentCard
@@ -73,7 +76,7 @@ init { ship, seed } =
 
 
 type Msg
-    = CardOptionSelected (Ship -> Ship)
+    = CardOptionSelected (Ship -> ( Ship, String ))
 
 
 update : Msg -> Model -> ( Bool, Model )
@@ -93,12 +96,17 @@ update msg model =
             in
             case maybeCurrentCard of
                 Just currentCard ->
+                    let
+                        ( nextShip, actionMessage ) =
+                            fn model.ship
+                    in
                     ( False
-                    , { ship = fn model.ship
+                    , { ship = nextShip
                       , seed = nextSeed
                       , futureCards = remainingCards
                       , pastCards = model.currentCard :: model.pastCards
                       , currentCard = currentCard
+                      , actionMessage = actionMessage
                       }
                     )
 
@@ -122,7 +130,7 @@ nextRandomCard seed cards =
 defaultFutureCards : List Card
 defaultFutureCards =
     [ { title = "Asteroid Belt"
-      , description = "The ship passes through an asteroid belt!"
+      , description = "The ship is headed towards an asteroid belt!"
       , options =
             List.Nonempty.singleton
                 { label = "Push through the asteroid belt"
@@ -131,10 +139,10 @@ defaultFutureCards =
                         (\ship ->
                             case ship.shields of
                                 Uninstalled ->
-                                    { ship | passengers = ship.passengers - 5 }
+                                    ( { ship | passengers = ship.passengers - 5 }, "The asteroids break through the ship, killing 5 passengers." )
 
                                 Installed _ ->
-                                    ship
+                                    ( ship, "Your shields protect the ship." )
                         )
                 }
       }
@@ -143,7 +151,15 @@ defaultFutureCards =
       , options =
             List.Nonempty.singleton
                 { label = "Pass by a red giant"
-                , action = CardOptionSelected (\ship -> { ship | passengers = ship.passengers - 2 })
+                , action =
+                    CardOptionSelected
+                        (\ship ->
+                            ( { ship
+                                | passengers = ship.passengers - 2
+                              }
+                            , "The heat of the red giant scorches the ship, killing 2 passengers."
+                            )
+                        )
                 }
       }
     ]
@@ -154,14 +170,26 @@ defaultFutureCards =
 
 
 view : Model -> Element Msg
-view { currentCard, ship } =
+view { currentCard, ship, actionMessage } =
     column
         [ spacing 16 ]
-        [ currentCard
+        [ actionMessage
+            |> text
+            |> el
+                [ Border.solid
+                , Border.widthEach
+                    { top = 0
+                    , bottom = 2
+                    , left = 0
+                    , right = 0
+                    }
+                , padding 8
+                ]
+        , currentCard
             |> .description
             |> text
             |> List.singleton
-            |> paragraph []
+            |> paragraph [ padding 8 ]
         , currentCard
             |> .options
             |> List.Nonempty.toList
