@@ -1,0 +1,26 @@
+{
+  "name": "bob",
+  "version": "0.1.0",
+  "description": "A game of exploration",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "elm-live src/Main.elm --dir=dist --start-page=index.html -- --debug --output=dist/elm.js",
+    "build": "npm run build:elm && npm run build:minify",
+    "build:elm": "elm make src/Main.elm --optimize --output=src/elm.js",
+    "build:minify": "terser src/elm.js --compress 'pure_funcs=\"F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9\",pure_getters,keep_fargs=false,unsafe_comps,unsafe' | terser --mangle --output=dist/elm.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wolfadex/planet-bob.git"
+  },
+  "author": "Wolfgang Schuster",
+  "bugs": {
+    "url": "https://github.com/wolfadex/planet-bob/issues"
+  },
+  "homepage": "https://github.com/wolfadex/planet-bob#readme",
+  "devDependencies": {
+    "elm": "^0.19.1-3",
+    "elm-format": "^0.8.4",
+    "terser": "^5.5.1"
+  }
+}

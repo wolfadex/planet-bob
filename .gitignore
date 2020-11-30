@@ -1,7 +1,11 @@
-index.html
+dist/elm.js
+src/elm.js
 
 # Elm
 elm-stuff
+
+# javscript
+node_modules
 
 # just mac things
 .DS_Store
