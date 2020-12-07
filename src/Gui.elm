@@ -1,7 +1,9 @@
-module Gui exposing (button, textField)
+module Gui exposing (button, textField, card)
 
 import Element exposing (..)
+import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input
 
 
@@ -10,7 +12,17 @@ button =
     Input.button
         [ paddingXY 16 8
         , Border.solid
-        , Border.width 3
+        , Border.widthEach
+            { top = 2
+            , bottom = 4
+            , left = 4
+            , right = 2
+            }
+        , mouseOver
+            [ Border.color (rgb 0.4 0.9 0.9)
+            , Background.color (rgba 0 0 0 0.7)
+            , Font.color (rgb 0.4 0.9 0.9)
+            ]
         ]
 
 
@@ -26,3 +38,20 @@ textField { label, value, onChange } =
                 |> Input.labelLeft []
         , text = value
         }
+
+
+card : List (Attribute msg) -> Element msg -> Element msg
+card additionalAttributes =
+    el
+        ([ spacing 8
+         , padding 8
+         , Border.solid
+         , Border.widthEach
+            { top = 2
+            , bottom = 4
+            , left = 4
+            , right = 2
+            }
+         ]
+            ++ additionalAttributes
+        )

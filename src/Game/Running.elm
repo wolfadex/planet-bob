@@ -1,12 +1,15 @@
-module Game.Running exposing (Model, Msg, init, update, view)
+module Game.Running exposing (Model, Msg, init, subscriptions, update, view)
 
+import Browser.Events
 import Element exposing (..)
 import Element.Border as Border
+import Element.Font as Font
 import Game exposing (EndType(..), Ship)
 import Game.Feature as Feature exposing (Feature(..))
 import Gui
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)
+import Random.Extra exposing (result)
 import Random.List
 
 
@@ -14,10 +17,21 @@ type alias Model =
     { ship : Ship
     , seed : Seed
     , futureCards : List Card
-    , currentCard : Card
-    , pastCards : List Card
-    , actionMessage : String
+    , playSpeed : PlaySpeed
+    , elapsedTime : Float
+    , yearsElapsed : Int
+    , food : Int
+    , yearsSinceEvent : Int
     }
+
+
+type PlaySpeed
+    = Paused
+    | Normal
+    | Double
+    | Triple
+    | PausedForEvent Card
+    | PausedForResult String
 
 
 type alias Card =
@@ -37,12 +51,9 @@ type alias Option =
 ---- INIT ----
 
 
-init : { a | ship : Ship, seed : Seed } -> Maybe Model
+init : { a | ship : Ship, seed : Seed } -> Model
 init { ship, seed } =
     let
-        ( ( maybeCurrentCard, remainingCards ), nextSeed ) =
-            nextRandomCard seed defaultFutureCards
-
         passengerTotal =
             [ case ship.cryopods of
                 Uninstalled ->
@@ -59,17 +70,45 @@ init { ship, seed } =
             ]
                 |> List.sum
     in
-    Maybe.map
-        (\currentCard ->
-            { ship = { ship | passengers = passengerTotal }
-            , seed = nextSeed
-            , futureCards = remainingCards
-            , pastCards = []
-            , currentCard = currentCard
-            , actionMessage = "Your beautiful new ship launches into the depths of space. Looking for a new world."
+    { ship = { ship | passengers = passengerTotal }
+    , seed = seed
+    , futureCards = defaultFutureCards
+    , playSpeed =
+        PausedForEvent
+            { title = "The Journey Begins"
+            , description = "The ship sits, ready to launch."
+            , options =
+                List.Nonempty.singleton
+                    { label = "Launch the Ship"
+                    , action =
+                        \s ->
+                            ( s
+                            , "Your beautiful new ship launches into the depths of space. Looking for a new world."
+                            , False
+                            )
+                    }
             }
-        )
-        maybeCurrentCard
+    , elapsedTime = 0
+    , yearsElapsed = 0
+    , food = 100
+    , yearsSinceEvent = 0
+    }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.playSpeed of
+        Paused ->
+            Sub.none
+
+        PausedForEvent _ ->
+            Sub.none
+
+        PausedForResult _ ->
+            Sub.none
+
+        _ ->
+            Browser.Events.onAnimationFrameDelta Tick
 
 
 
@@ -78,45 +117,158 @@ init { ship, seed } =
 
 type Msg
     = CardOptionSelected (Ship -> ( Ship, String, Bool ))
+    | Tick Float
+    | Continue
+    | SetPlaySpeed PlaySpeed
 
 
 update : Msg -> Model -> ( Maybe EndType, Model )
 update msg model =
     case msg of
+        SetPlaySpeed newSpeed ->
+            ( Nothing, { model | playSpeed = newSpeed } )
+
+        Continue ->
+            ( Nothing, { model | playSpeed = Normal } )
+
+        Tick deltaTime ->
+            ( Nothing
+            , case model.playSpeed of
+                Normal ->
+                    updateTick 1 deltaTime model
+
+                Double ->
+                    updateTick 2 deltaTime model
+
+                Triple ->
+                    updateTick 3 deltaTime model
+
+                _ ->
+                    model
+            )
+
         CardOptionSelected fn ->
             let
-                cards =
-                    if List.isEmpty model.futureCards then
-                        defaultFutureCards
-
-                    else
-                        model.futureCards
-
-                ( ( maybeCurrentCard, remainingCards ), nextSeed ) =
-                    nextRandomCard model.seed cards
+                ( nextShip, resultMessage, settleHere ) =
+                    fn model.ship
             in
-            case maybeCurrentCard of
-                Just currentCard ->
-                    let
-                        ( nextShip, actionMessage, settleHere ) =
-                            fn model.ship
-                    in
-                    ( if settleHere then
-                        Just (SettleColony "You settle a colony on a beautiful Earth like planet. The citizens name it Bob.")
+            ( if settleHere then
+                Just (SettleColony "You settle a colony on a beautiful Earth like planet. The citizens name it Bob.")
 
-                      else
-                        Nothing
-                    , { ship = nextShip
-                      , seed = nextSeed
-                      , futureCards = remainingCards
-                      , pastCards = model.currentCard :: model.pastCards
-                      , currentCard = currentCard
-                      , actionMessage = actionMessage
-                      }
-                    )
+              else
+                Nothing
+            , { model
+                | ship = nextShip
+                , playSpeed = PausedForResult resultMessage
+              }
+            )
 
-                Nothing ->
-                    ( Just (Starve "The passengers of the ship, having gone without food for so long, succumbs to the effects of starvation."), model )
+
+updateTick : Int -> Float -> Model -> Model
+updateTick playSpeed deltaTime model =
+    let
+        newElapsedTime =
+            model.elapsedTime + deltaTime
+
+        diffedElapsedTime =
+            if newElapsedTime - 1000 < 0 then
+                newElapsedTime
+
+            else
+                newElapsedTime - 1000
+
+        modelWithElapsedTime =
+            { model | elapsedTime = diffedElapsedTime }
+    in
+    if newElapsedTime > diffedElapsedTime then
+        updateTickHelper playSpeed modelWithElapsedTime
+
+    else
+        modelWithElapsedTime
+
+
+updateTickHelper : Int -> Model -> Model
+updateTickHelper timesToUpdate model =
+    if timesToUpdate == 0 then
+        model
+
+    else
+        let
+            foodCreated =
+                case model.ship.biofarms of
+                    Installed n ->
+                        n * 40
+
+                    Uninstalled ->
+                        0
+
+            foodConsumed =
+                model.ship.passengers * 10
+
+            foodRemaining =
+                model.food + foodCreated - foodConsumed
+
+            passengersRemaining =
+                if foodRemaining < -20 then
+                    model.ship.passengers - 1
+
+                else
+                    model.ship.passengers
+
+            ship =
+                model.ship
+
+            nextModel =
+                { model
+                    | yearsElapsed = model.yearsElapsed + 1
+                    , yearsSinceEvent = model.yearsSinceEvent + 1
+                    , food = foodRemaining
+                    , ship = { ship | passengers = passengersRemaining }
+                }
+        in
+        case maybeEvent nextModel of
+            ( Just card, finalModel ) ->
+                { finalModel | playSpeed = PausedForEvent card }
+
+            ( Nothing, finalModel ) ->
+                updateTickHelper (timesToUpdate - 1) finalModel
+
+
+maybeEvent : Model -> ( Maybe Card, Model )
+maybeEvent model =
+    let
+        ( shouldPullEventCard, nextSeed ) =
+            Random.step
+                (Random.Extra.oneIn (100 - model.yearsSinceEvent))
+                model.seed
+    in
+    if shouldPullEventCard then
+        let
+            cards =
+                if List.isEmpty model.futureCards then
+                    defaultFutureCards
+
+                else
+                    model.futureCards
+
+            ( ( maybeCard, remainingCards ), finalSeed ) =
+                nextRandomCard nextSeed cards
+        in
+        case maybeCard of
+            Nothing ->
+                ( Nothing, { model | seed = finalSeed } )
+
+            Just card ->
+                ( Just card
+                , { model
+                    | seed = finalSeed
+                    , futureCards = remainingCards
+                    , yearsSinceEvent = 0
+                  }
+                )
+
+    else
+        ( Nothing, { model | seed = nextSeed } )
 
 
 nextRandomCard : Seed -> List Card -> ( ( Maybe Card, List Card ), Seed )
@@ -133,42 +285,115 @@ nextRandomCard seed cards =
 
 
 view : Model -> Element Msg
-view { currentCard, ship, actionMessage } =
+view { ship, yearsElapsed, food, playSpeed } =
     column
         [ spacing 16 ]
-        [ actionMessage
-            |> text
-            |> el
-                [ Border.solid
-                , Border.widthEach
-                    { top = 0
-                    , bottom = 2
-                    , left = 0
-                    , right = 0
-                    }
-                , padding 8
+        [ case playSpeed of
+            PausedForEvent card ->
+                [ card
+                    |> .description
+                    |> text
+                    |> List.singleton
+                    |> paragraph [ padding 8 ]
+                , card
+                    |> .options
+                    |> List.Nonempty.toList
+                    |> List.map
+                        (\{ label, action } ->
+                            Gui.button
+                                { label = text label
+                                , onPress = Just (CardOptionSelected action)
+                                }
+                        )
+                    |> row [ spacing 8 ]
                 ]
-        , currentCard
-            |> .description
-            |> text
-            |> List.singleton
-            |> paragraph [ padding 8 ]
-        , currentCard
-            |> .options
-            |> List.Nonempty.toList
-            |> List.map
-                (\{ label, action } ->
-                    Gui.button
-                        { label = text label
-                        , onPress = Just (CardOptionSelected action)
-                        }
-                )
-            |> row [ spacing 8 ]
+                    |> column []
+                    |> Gui.card []
+
+            PausedForResult resultStr ->
+                [ text resultStr
+                , Gui.button
+                    { label = text "Continue"
+                    , onPress = Just Continue
+                    }
+                ]
+                    |> column []
+                    |> Gui.card []
+
+            _ ->
+                none
         , ship
             |> .passengers
             |> String.fromInt
             |> (++) "Passengers: "
             |> text
+        , food
+            |> String.fromInt
+            |> (++) "Food: "
+            |> text
+        , yearsElapsed
+            |> String.fromInt
+            |> (++) "Years: "
+            |> text
+        , column
+            [ spacing 8 ]
+            [ text "Play Speed"
+            , row
+                [ spacing 16 ]
+                [ Gui.button
+                    { label =
+                        el
+                            (case playSpeed of
+                                Paused ->
+                                    [ Font.underline ]
+
+                                _ ->
+                                    []
+                            )
+                            (text "Pause")
+                    , onPress = Just (SetPlaySpeed Paused)
+                    }
+                , Gui.button
+                    { label =
+                        el
+                            (case playSpeed of
+                                Normal ->
+                                    [ Font.underline ]
+
+                                _ ->
+                                    []
+                            )
+                            (text "Normal")
+                    , onPress = Just (SetPlaySpeed Normal)
+                    }
+                , Gui.button
+                    { label =
+                        el
+                            (case playSpeed of
+                                Double ->
+                                    [ Font.underline ]
+
+                                _ ->
+                                    []
+                            )
+                            (text "Double")
+                    , onPress = Just (SetPlaySpeed Double)
+                    }
+                , Gui.button
+                    { label =
+                        el
+                            (case playSpeed of
+                                Triple ->
+                                    [ Font.underline ]
+
+                                _ ->
+                                    []
+                            )
+                            (text "Triple")
+                    , onPress = Just (SetPlaySpeed Triple)
+                    }
+                ]
+            ]
         ]
 
 

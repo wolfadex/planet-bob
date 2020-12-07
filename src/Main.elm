@@ -43,8 +43,13 @@ init _ =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none
+subscriptions model =
+    case model of
+        GameRunning m ->
+            Running.subscriptions m |> Sub.map GameRunningMessage
+
+        _ ->
+            Sub.none
 
 
 
@@ -67,12 +72,7 @@ update msg model =
         ( GameSetupMessage m, GameSetup mod ) ->
             ( case Setup.update m mod of
                 ( True, newMod ) ->
-                    case Running.init newMod of
-                        Just runningMod ->
-                            GameRunning runningMod
-
-                        Nothing ->
-                            End.init newMod EndTimes |> GameEnd
+                    GameRunning (Running.init newMod)
 
                 ( False, newMod ) ->
                     GameSetup newMod
